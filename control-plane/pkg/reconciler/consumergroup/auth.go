@@ -43,6 +43,7 @@ func (r Reconciler) newAuthConfigOption(ctx context.Context, cg *kafkainternals.
 		return security.NewSaramaSecurityOptionFromSecret(authContext.VirtualSecret), nil
 
 	} else if hasNetSpecAuthConfig(cg.Spec.Template.Spec.Auth) {
+
 		auth, err := security.ResolveAuthContextFromNetSpec(r.SecretLister, cg.GetNamespace(), *cg.Spec.Template.Spec.Auth.NetSpec)
 		if err != nil {
 			return nil, err
@@ -84,13 +85,7 @@ func hasSecretSpecConfig(auth *kafkainternals.Auth) bool {
 func hasNetSpecAuthConfig(auth *kafkainternals.Auth) bool {
 	return auth != nil &&
 		auth.NetSpec != nil &&
-		(auth.NetSpec.TLS.Enable || auth.NetSpec.SASL.Enable) &&
-		(auth.NetSpec.TLS.Cert.SecretKeyRef != nil ||
-			auth.NetSpec.TLS.CACert.SecretKeyRef != nil ||
-			auth.NetSpec.TLS.Key.SecretKeyRef != nil ||
-			auth.NetSpec.SASL.User.SecretKeyRef != nil ||
-			auth.NetSpec.SASL.Password.SecretKeyRef != nil ||
-			auth.NetSpec.SASL.Type.SecretKeyRef != nil)
+		(auth.NetSpec.TLS.Enable || auth.NetSpec.SASL.Enable)
 }
 
 type SecretSpecSecretLocator struct {

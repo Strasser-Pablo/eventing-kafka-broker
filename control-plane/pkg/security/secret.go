@@ -63,6 +63,22 @@ var supportedProtocols = fmt.Sprintf("%v", []string{
 	ProtocolSASLSSL,
 })
 
+func NewConfig(clientCert, clientKey string) (*tls.Config, error) {
+	tlsConfig := tls.Config{
+		MinVersion: tls.VersionTLS12,
+	}
+
+	if clientCert != "" && clientKey != "" {
+		cert, err := tls.LoadX509KeyPair(clientCert, clientKey)
+		if err != nil {
+			return &tlsConfig, err
+		}
+		tlsConfig.Certificates = []tls.Certificate{cert}
+	}
+
+	return &tlsConfig, nil
+}
+
 func secretData(data map[string][]byte) kafka.ConfigOption {
 	return func(config *sarama.Config) error {
 
@@ -171,18 +187,22 @@ func sslConfig(protocol string, data map[string][]byte) kafka.ConfigOption {
 			if err != nil {
 				return fmt.Errorf("[protocol %s] %w", protocol, err)
 			}
+            userKeyCert, userKeyExists := data[UserKey]
+			userCert, userCertExists := data[UserCertificate]
+
+			if !skipClientAuth && !userKeyExists && !userCertExists {
+                skipClientAuth=true
+			}
 
 			if !skipClientAuth {
-				userKeyCert, ok := data[UserKey]
-				if !ok {
+                if !userKeyExists {
 					return fmt.Errorf(
 						`[protocol %s] required user key (key: %s) - use "%s: true" to disable client auth`,
 						protocol, UserKey, UserSkip,
 					)
 				}
 
-				userCert, ok := data[UserCertificate]
-				if !ok {
+                if !userCertExists {
 					return fmt.Errorf(
 						`[protocol %s] required user key (key: %s) - use "%s: true" to disable client auth`,
 						protocol, UserCertificate, UserSkip,
@@ -195,9 +215,18 @@ func sslConfig(protocol string, data map[string][]byte) kafka.ConfigOption {
 				}
 				tlsCerts = []tls.Certificate{tlsCert}
 			}
-		}
 
-		config.Net.TLS.Enable = true
+            tlsConfig, err := NewConfig(string(userCert[:]),string(userKeyCert[:]))
+		    if err != nil {
+
+				return fmt.Errorf("Failed to create TLS config: %s", err)
+		    }
+
+		    config.Net.TLS.Enable = true
+		    config.Net.TLS.Config = tlsConfig
+            return nil
+		}
+        config.Net.TLS.Enable = true
 		config.Net.TLS.Config = &tls.Config{
 			MinVersion:   tls.VersionTLS12,
 			MaxVersion:   tls.VersionTLS13,

@@ -456,10 +456,10 @@ func (r Reconciler) reconcileInitialOffset(ctx context.Context, cg *kafkainterna
 	}
 
 	bootstrapServers := kafka.BootstrapServersArray(cg.Spec.Template.Spec.Configs.Configs["bootstrap.servers"])
-
 	kafkaClusterAdminClient, err := r.NewKafkaClusterAdminClient(bootstrapServers, kafkaClusterAdminSaramaConfig)
+
 	if err != nil {
-		return fmt.Errorf("cannot obtain Kafka cluster admin, %w", err)
+		return fmt.Errorf("cannot obtain Kafka cluster admin, %w , %+v ,%+v ", err,kafkaClusterAdminSaramaConfig,bootstrapServers)
 	}
 	defer kafkaClusterAdminClient.Close()
 
